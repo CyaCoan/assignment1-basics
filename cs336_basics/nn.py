@@ -22,3 +22,19 @@ class Linear(nn.Module):
         # 用 einsum 方便处理张量维度变化
         # x 最后一维为 i，权重维度为 o * i，输出结果的最后一维为 o
         return torch.einsum('...i, oi -> ...o', x, self.weight)
+    
+
+class Embedding(nn.Module):
+    def __init__(self, num_embedding: int, embedding_dim: int, device=None, dtype=None):
+        super().__init__()
+
+        factory_kwargs = {'device': device, 'dtype': dtype}
+
+        self.weight = nn.Parameter(torch.empty((num_embedding, embedding_dim), **factory_kwargs))
+
+        std = 1.0
+        nn.init.trunc_normal_(self.weight, mean=0.0, std=std, a=-3*std, b=3*std)
+
+    def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
+        # 相当于用 token_ids 查表，每个 id 对应一个嵌入向量
+        return self.weight[token_ids]

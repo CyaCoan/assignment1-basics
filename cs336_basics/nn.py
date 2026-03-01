@@ -38,3 +38,23 @@ class Embedding(nn.Module):
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
         # 相当于用 token_ids 查表，每个 id 对应一个嵌入向量
         return self.weight[token_ids]
+    
+
+class SwiGLU(nn.Module):
+    def __init__(self, d_model: int, d_ff: int, device=None, dtype=None):
+        super().__init__()
+
+        self.d_model = d_model
+        self.d_ff = d_ff
+
+        self.w1 = Linear(d_model, d_ff, device, dtype)
+        self.w2 = Linear(d_ff, d_model, device, dtype)
+        self.w3 = Linear(d_model, d_ff, device, dtype)
+
+    def _silu(self, in_features):
+        return in_features * torch.sigmoid(in_features)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        gate = self._silu(self.w1(x))
+        signal = self.w3(x)
+        return self.w2(gate * signal)

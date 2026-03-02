@@ -59,3 +59,39 @@ class SwiGLU(nn.Module):
         gate = silu(self.w1(x))
         signal = self.w3(x)
         return self.w2(gate * signal)
+    
+
+def softmax(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    x_max = torch.max(x, dim=dim, keepdim=True).values
+    x_stable = x - x_max
+
+    exp_x = torch.exp(x_stable)
+
+    sum_exp = torch.sum(exp_x, dim=dim, keepdim=True)
+
+    return exp_x / sum_exp
+
+
+def scaled_dot_product_attention(
+    Q: torch.Tensor,
+    K: torch.Tensor,
+    V: torch.Tensor,
+    mask: torch.Tensor = None
+) -> torch.Tensor:
+    """
+    Q: (batch_size, ..., n, d_k)
+    K: (batch_size, ..., m, d_k)
+    V: (batch_size, ..., m, d_v)
+    mask: (..., n, m) 或者是可以广播到该形状的布尔张量 (True 表示关注, False 表示屏蔽)
+    """
+    d_k = Q.size(-1)
+    scores = torch.einsum('...nk, ...mk -> ...nm', Q, K) / math.sqrt(d_k)
+
+    if mask is not None:
+        scores = scores.masked_fill(mask == False, float('-inf'))
+
+    probs = softmax(scores, dim=-1)
+
+    output = torch.einsum('...nm, ...mk -> ...nk', probs, V)
+
+    return output

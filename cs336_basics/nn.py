@@ -95,3 +95,39 @@ def scaled_dot_product_attention(
     output = torch.einsum('...nm, ...mk -> ...nk', probs, V)
 
     return output
+
+
+class RotaryPositionalEmbedding(nn.Module):
+    def __init__(self, d_k: int, theta: float, max_seq_len: int, device=None):
+        super().__init__()
+
+        powers = torch.arange(0, d_k, 2, device=device).float() / d_k
+        freqs = 1.0 / (theta ** powers)
+
+        t = torch.arange(max_seq_len, device=device).float()
+
+        # freqs_matrix 的形状为 (max_seq_len, d_k/2)
+        freqs_matrix = torch.outer(t, freqs)
+
+        self.register_buffer("cos_cached", freqs_matrix.cos(), persistent=False)
+        self.register_buffer("sin_cached", freqs_matrix.sin(), persistent=False)
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+        cos = self.cos_cached[token_positions]
+        sin = self.sin_cached[token_positions]
+
+        if x.ndim > cos.ndim and cos.ndim >= 3:
+            cos.unsqueeze(1)
+            sin.unsqueeze(1)
+
+        cos = cos.to(x.dtype)
+        sin = sin.to(x.dtype)
+
+        x_even = x[..., 0::2]
+        x_odd = x[..., 1::2]
+
+        output = torch.empty_like(x)
+        output[..., 0::2] = x_even * cos - x_odd * sin
+        output[..., 1::2] = x_even * sin + x_odd * cos
+
+        return output

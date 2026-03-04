@@ -172,7 +172,7 @@ class CausalSelfAttention(nn.Module):
         self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
 
         if theta is not None and max_seq_len is not None:
-            self.rope = RotaryPositionalEmbedding(theta, self.d_k, max_seq_len, device=device)
+            self.rope = RotaryPositionalEmbedding(self.d_k, theta, max_seq_len, device=device)
         else:
             self.rope = None
 

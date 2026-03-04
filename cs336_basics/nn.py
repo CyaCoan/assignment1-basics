@@ -153,3 +153,50 @@ class RMSNorm(nn.Module):
         output = (x_float / rms) * self.weight
 
         return output.to(in_dtype)
+    
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, d_model: int, num_heads: int, bias: bool = False,
+                 max_seq_len=None, theta=None, device=None, dtype=None):
+        super().__init__()
+
+        assert d_model % num_heads == 0
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+
+        self.q_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.k_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.v_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+        self.o_proj = Linear(d_model, d_model, device=device, dtype=dtype)
+
+        if theta is not None and max_seq_len is not None:
+            self.rope = RotaryPositionalEmbedding(theta, self.d_k, max_seq_len, device=device)
+        else:
+            self.rope = None
+
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor = None) -> torch.Tensor:
+        b, s, d = x.shape
+
+        q = rearrange(self.q_proj(x), '... s (h d) -> ... h s d', h=self.num_heads)
+        k = rearrange(self.k_proj(x), '... s (h d) -> ... h s d', h=self.num_heads)
+        v = rearrange(self.v_proj(x), '... s (h d) -> ... h s d', h=self.num_heads)
+
+        if self.rope is not None:
+
+            if token_positions is None:
+                # 动态适配 batch 维度
+                batch_dims = x.shape[:-2]
+                token_positions = torch.arange(s, device=x.device).expand(*batch_dims, s)
+            
+            q = self.rope(q, token_positions)
+            k = self.rope(k, token_positions)
+
+        mask = torch.tril(torch.ones(s, s, device=x.device, dtype=torch.bool))
+
+        attn_out = scaled_dot_product_attention(q, k, v, mask=mask)
+
+        attn_out = rearrange(attn_out, '... h s d -> ... s (h d)')
+
+        return self.o_proj(attn_out)

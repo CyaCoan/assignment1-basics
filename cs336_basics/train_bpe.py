@@ -51,7 +51,6 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
-
 def train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,
@@ -229,7 +228,6 @@ def train_bpe(
 
     return vocab, merges
 
-
 def bytes_to_unicode():
     """
     创建一个映射，将 0-255 字节映射为一组可见的 Unicode 字符。
@@ -248,7 +246,6 @@ def bytes_to_unicode():
     cs = [chr(n) for n in cs]
 
     return dict(zip(bs, cs))
-
 
 def save_tokenizer_files(vocab, merges, out_dir):
     os.makedirs(out_dir, exist_ok=True)

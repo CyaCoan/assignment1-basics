@@ -544,7 +544,9 @@ def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    from cs336_basics.optimizer import AdamW
+
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
@@ -670,5 +672,5 @@ def run_train_bpe(
                 Merges are ordered by order of creation.
     """
     from cs336_basics.train_bpe import train_bpe
-    
+
     return train_bpe(input_path, vocab_size, special_tokens)

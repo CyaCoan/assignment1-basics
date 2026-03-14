@@ -437,7 +437,29 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    from cs336_basics.transformer import TransformerLM
+
+    model = TransformerLM(vocab_size, context_length, d_model, num_layers, num_heads, d_ff, rope_theta, 
+                          device=in_indices.device, dtype=torch.float32)
+    
+    model.token_embeddings.weight.data.copy_(weights["token_embeddings.weight"])
+    model.ln_final.weight.data.copy_(weights["ln_final.weight"])
+    model.lm_head.weight.data.copy_(weights["lm_head.weight"])
+
+    for i in range(num_layers):
+        layer = model.layers[i]
+        prefix = f"layers.{i}."
+        layer.attn.q_proj.weight.data.copy_(weights[f"{prefix}attn.q_proj.weight"])
+        layer.attn.k_proj.weight.data.copy_(weights[f"{prefix}attn.k_proj.weight"])
+        layer.attn.v_proj.weight.data.copy_(weights[f"{prefix}attn.v_proj.weight"])
+        layer.attn.o_proj.weight.data.copy_(weights[f"{prefix}attn.output_proj.weight"])
+        layer.ln1.weight.data.copy_(weights[f"{prefix}ln1.weight"])
+        layer.ffn.w1.weight.data.copy_(weights[f"{prefix}ffn.w1.weight"])
+        layer.ffn.w2.weight.data.copy_(weights[f"{prefix}ffn.w2.weight"])
+        layer.ffn.w3.weight.data.copy_(weights[f"{prefix}ffn.w3.weight"])
+        layer.ln2.weight.data.copy_(weights[f"{prefix}ln2.weight"])
+        
+    return model(in_indices)
 
 
 def run_rmsnorm(
